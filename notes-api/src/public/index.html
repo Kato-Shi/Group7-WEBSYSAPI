@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notes API Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="page-header__text">
+        <h1>Notes API dashboard</h1>
+        <p class="muted">Create, edit, and organise notes stored in the Express backend.</p>
+      </div>
+      <span id="apiStatus" class="status status--loading">Checking API…</span>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <div class="panel__head">
+          <h2 id="formHeading">Create a note</h2>
+          <button type="button" id="cancelEdit" class="ghost-button hidden">Cancel edit</button>
+        </div>
+
+        <form id="noteForm" class="form" novalidate>
+          <div class="form__row">
+            <label class="field">
+              <span>Title <sup>*</sup></span>
+              <input id="titleInput" name="title" type="text" required placeholder="Write a short title" />
+            </label>
+            <label class="field">
+              <span>Category</span>
+              <input
+                id="categoryInput"
+                name="category"
+                type="text"
+                list="categoryOptions"
+                placeholder="e.g. work"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Content <sup>*</sup></span>
+            <textarea
+              id="contentInput"
+              name="content"
+              rows="5"
+              required
+              placeholder="Add the full content of your note"
+            ></textarea>
+          </label>
+
+          <div class="form__row">
+            <label class="field">
+              <span>Priority</span>
+              <select id="priorityInput" name="priority">
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="low">Low</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Tags (comma separated)</span>
+              <input id="tagsInput" name="tags" type="text" placeholder="planning,ideas" />
+            </label>
+          </div>
+
+          <div class="form__row form__row--inline">
+            <label class="checkbox">
+              <input id="pinnedInput" name="isPinned" type="checkbox" />
+              <span>Pin note</span>
+            </label>
+            <label class="checkbox" id="archivedField">
+              <input id="archivedInput" name="isArchived" type="checkbox" disabled />
+              <span>Archive note (only available when editing)</span>
+            </label>
+          </div>
+
+          <div class="form__actions">
+            <button type="submit" id="submitNote" class="primary-button">Create note</button>
+          </div>
+        </form>
+        <datalist id="categoryOptions"></datalist>
+      </section>
+
+      <section class="panel panel--list">
+        <div class="panel__head panel__head--stack">
+          <div>
+            <h2>Notes</h2>
+            <p id="notesSummary" class="muted">Loading notes…</p>
+          </div>
+          <div class="filters">
+            <label class="filters__item">
+              <span class="visually-hidden">Search notes</span>
+              <input id="searchInput" type="search" placeholder="Search title or content" />
+            </label>
+            <label class="filters__item">
+              <span class="visually-hidden">Filter by category</span>
+              <select id="categoryFilter">
+                <option value="">All categories</option>
+              </select>
+            </label>
+            <label class="filters__item">
+              <span class="visually-hidden">Filter by priority</span>
+              <select id="priorityFilter">
+                <option value="">All priorities</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </label>
+            <label class="filters__item">
+              <span class="visually-hidden">Filter by pinned state</span>
+              <select id="pinnedFilter">
+                <option value="all">Pinned + unpinned</option>
+                <option value="true">Pinned only</option>
+                <option value="false">Unpinned only</option>
+              </select>
+            </label>
+            <label class="filters__item">
+              <span class="visually-hidden">Filter by archived state</span>
+              <select id="archivedFilter">
+                <option value="false">Active notes</option>
+                <option value="true">Archived notes</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div id="notesList" class="notes-list" data-state="loading">
+          <p class="placeholder">Loading notes…</p>
+        </div>
+      </section>
+    </main>
+
+    <div id="notification" class="notification hidden" role="status" aria-live="polite"></div>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
