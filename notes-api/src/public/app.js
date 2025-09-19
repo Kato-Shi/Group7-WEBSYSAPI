@@ -31,21 +31,15 @@
   };
 
   const STATUS_STYLES = {
-    loading:
-      'inline-block rounded border border-yellow-300 bg-yellow-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-yellow-900',
-    ok:
-      'inline-block rounded border border-emerald-300 bg-emerald-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-900',
-    error:
-      'inline-block rounded border border-rose-300 bg-rose-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-900',
+    loading: 'status-badge status-badge--loading',
+    ok: 'status-badge status-badge--ok',
+    error: 'status-badge status-badge--error',
   };
 
   const MESSAGE_STYLES = {
-    info:
-      'cursor-pointer rounded border border-slate-300 bg-amber-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-amber-900',
-    success:
-      'cursor-pointer rounded border border-emerald-300 bg-emerald-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-900',
-    error:
-      'cursor-pointer rounded border border-rose-300 bg-rose-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-rose-900',
+    info: 'message message--info',
+    success: 'message message--success',
+    error: 'message message--error',
   };
 
   init();
@@ -273,7 +267,7 @@
   }
 
   function showListMessage(message) {
-    ui.list.innerHTML = `<p class="text-sm text-slate-500">${message}</p>`;
+    ui.list.innerHTML = `<p class="note-list__empty">${message}</p>`;
   }
 
   function updateSummary(displayedCount) {
@@ -298,22 +292,22 @@
 
   function createNoteCard(note) {
     const card = document.createElement('article');
-    card.className = 'rounded border border-slate-300 bg-white p-3 shadow-sm';
+    card.className = 'note-card';
     if (note.isArchived) {
-      card.classList.add('opacity-70');
+      card.classList.add('note-card--archived');
     }
 
     const header = document.createElement('div');
-    header.className = 'flex items-start justify-between gap-3';
+    header.className = 'note-card__top';
 
     const title = document.createElement('h3');
-    title.className = 'text-base font-bold text-slate-800';
+    title.className = 'note-card__title';
     title.textContent = note.title || 'Untitled note';
     header.appendChild(title);
 
     if (note.isPinned) {
       const pin = document.createElement('span');
-      pin.className = 'rounded bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-indigo-700';
+      pin.className = 'note-card__tag note-card__tag--pin';
       pin.textContent = 'Pinned';
       header.appendChild(pin);
     }
@@ -321,7 +315,7 @@
     card.appendChild(header);
 
     const meta = document.createElement('p');
-    meta.className = 'mt-1 text-xs text-slate-500';
+    meta.className = 'note-card__meta';
     const category = note.category ? `Category: ${note.category}` : 'Category: general';
     const priority = note.priority ? `Priority: ${note.priority}` : 'Priority: medium';
     const archived = note.isArchived ? 'Archived' : 'Active';
@@ -329,38 +323,26 @@
     card.appendChild(meta);
 
     const body = document.createElement('p');
-    body.className = 'mt-2 whitespace-pre-wrap text-sm text-slate-700';
+    body.className = 'note-card__body';
     body.textContent = note.content || '';
     card.appendChild(body);
 
     const dates = document.createElement('p');
-    dates.className = 'mt-2 text-[11px] text-slate-400';
+    dates.className = 'note-card__dates';
     dates.textContent = `Updated ${formatDate(note.updatedAt)} • Created ${formatDate(note.createdAt)}`;
     card.appendChild(dates);
 
     const buttons = document.createElement('div');
-    buttons.className = 'mt-3 flex flex-wrap gap-2 text-xs';
+    buttons.className = 'note-card__actions';
 
+    buttons.appendChild(makeButton('Edit', 'btn btn--primary btn--small', () => enterEditMode(note)));
     buttons.appendChild(
-      makeButton('Edit', 'bg-indigo-500 text-white hover:bg-indigo-600 border border-indigo-600', () => enterEditMode(note))
+      makeButton(note.isPinned ? 'Unpin' : 'Pin', 'btn btn--ghost btn--small', () => togglePin(note))
     );
     buttons.appendChild(
-      makeButton(
-        note.isPinned ? 'Unpin' : 'Pin',
-        'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200',
-        () => togglePin(note)
-      )
+      makeButton(note.isArchived ? 'Restore' : 'Archive', 'btn btn--ghost btn--small', () => toggleArchive(note))
     );
-    buttons.appendChild(
-      makeButton(
-        note.isArchived ? 'Restore' : 'Archive',
-        'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200',
-        () => toggleArchive(note)
-      )
-    );
-    buttons.appendChild(
-      makeButton('Delete', 'bg-rose-500 text-white border border-rose-600 hover:bg-rose-600', () => deleteNote(note))
-    );
+    buttons.appendChild(makeButton('Delete', 'btn btn--danger btn--small', () => deleteNote(note)));
 
     card.appendChild(buttons);
 
@@ -371,7 +353,7 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = label;
-    button.className = `rounded px-3 py-1 text-xs font-semibold shadow focus:outline-none focus:ring focus:ring-indigo-200 ${classes}`;
+    button.className = classes;
     button.addEventListener('click', handler);
     return button;
   }
