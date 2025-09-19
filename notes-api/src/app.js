@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
 require('dotenv').config();
 const {swaggerUI, specs} = require('./config/swagger');
 
@@ -15,6 +16,8 @@ app.use(morgan('combined')); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
+app.use('/app', express.static(path.join(__dirname, 'public')));
+
 app.use('/api/notes', notesRoutes);
 
 // Basic route
@@ -23,6 +26,7 @@ app.get('/', (req, res) => {
     message: 'Welcome to Notes API',
     version: '1.0.0',
     status: 'running',
+    frontend: '/app',
   });
 });
 
