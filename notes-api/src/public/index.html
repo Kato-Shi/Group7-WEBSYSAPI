@@ -99,6 +99,9 @@
               <h2 class="panel__title">Saved notes</h2>
               <p id="notesCount" class="panel__subtitle">Loading...</p>
             </div>
+          </div>
+
+          <div class="panel__filters">
             <input
               id="filterInput"
               type="search"
@@ -106,6 +109,32 @@
               class="filter-box"
               aria-label="Filter notes"
             />
+
+            <div class="panel__filters-row">
+              <label class="filter-control">
+                <span>Status</span>
+                <select id="statusFilter" class="filter-select" aria-label="Filter by status">
+                  <option value="active" selected>Active only</option>
+                  <option value="archived">Archived only</option>
+                  <option value="all">All notes</option>
+                </select>
+              </label>
+
+              <label class="filter-control">
+                <span>Priority</span>
+                <select id="priorityFilter" class="filter-select" aria-label="Filter by priority">
+                  <option value="all" selected>All priorities</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </label>
+
+              <label class="filter-flag">
+                <input id="pinnedFilter" type="checkbox" />
+                <span>Pinned only</span>
+              </label>
+            </div>
           </div>
 
           <div id="notesList" class="note-list">

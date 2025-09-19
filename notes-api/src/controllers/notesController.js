@@ -33,15 +33,18 @@ const getAllNotes = async (req, res) => {
     }
 
     // Filter by archived status
-    whereClause.isArchived = archived === 'true';
+    const archivedFilter = typeof archived === 'string' ? archived.toLowerCase() : archived;
+    if (archivedFilter !== 'all') {
+      whereClause.isArchived = archivedFilter === 'true';
+    }
 
     // Filter by pinned status
-    if (pinned !== undefined) {
+    if (pinned !== undefined && pinned !== 'all') {
       whereClause.isPinned = pinned === 'true';
     }
 
     // Filter by priority
-    if (priority) {
+    if (priority && priority !== 'all') {
       whereClause.priority = priority;
     }
 

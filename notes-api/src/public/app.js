@@ -5,10 +5,15 @@
     health: `${API_ROOT}/health`,
   };
 
+  const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
   const state = {
     notes: [],
     editingId: null,
-    filter: '',
+    searchTerm: '',
+    statusFilter: 'active',
+    priorityFilter: 'all',
+    pinnedOnly: false,
     messageTimer: null,
   };
 
@@ -26,6 +31,9 @@
     message: document.getElementById('messageBox'),
     status: document.getElementById('apiStatus'),
     filter: document.getElementById('filterInput'),
+    statusFilter: document.getElementById('statusFilter'),
+    priorityFilter: document.getElementById('priorityFilter'),
+    filterPinned: document.getElementById('pinnedFilter'),
     list: document.getElementById('notesList'),
     summary: document.getElementById('notesCount'),
   };
@@ -53,10 +61,38 @@
       resetForm();
     });
     ui.cancel.addEventListener('click', () => resetForm(true));
-    ui.filter.addEventListener('input', event => {
-      state.filter = event.target.value.toLowerCase();
-      renderNotes();
-    });
+
+    if (ui.filter) {
+      state.searchTerm = ui.filter.value || '';
+      ui.filter.addEventListener('input', event => {
+        state.searchTerm = event.target.value;
+        renderNotes();
+      });
+    }
+
+    if (ui.statusFilter) {
+      ui.statusFilter.value = state.statusFilter;
+      ui.statusFilter.addEventListener('change', event => {
+        state.statusFilter = event.target.value;
+        renderNotes();
+      });
+    }
+
+    if (ui.priorityFilter) {
+      ui.priorityFilter.value = state.priorityFilter;
+      ui.priorityFilter.addEventListener('change', event => {
+        state.priorityFilter = event.target.value;
+        renderNotes();
+      });
+    }
+
+    if (ui.filterPinned) {
+      ui.filterPinned.checked = state.pinnedOnly;
+      ui.filterPinned.addEventListener('change', event => {
+        state.pinnedOnly = Boolean(event.target.checked);
+        renderNotes();
+      });
+    }
     if (ui.message) {
       ui.message.addEventListener('click', () => hideMessage(true));
     }
@@ -72,7 +108,7 @@
     showListMessage('Loading notes...');
 
     try {
-      const response = await fetchJson(`${ENDPOINTS.notes}?limit=100`);
+      const response = await fetchJson(`${ENDPOINTS.notes}?limit=100&archived=all`);
       const list = Array.isArray(response?.data) ? response.data : [];
       state.notes = list;
       renderNotes();
@@ -81,7 +117,7 @@
       console.error('Failed to load notes:', error);
       state.notes = [];
       showListMessage('Could not load notes. Maybe refresh later.');
-      updateSummary(0);
+      updateSummary([]);
       setStatus('error', 'API offline');
       showMessage(error.message || 'Unable to reach the API.', 'error');
     }
@@ -134,7 +170,7 @@
     const payload = {
       title: ui.title.value.trim(),
       content: ui.content.value.trim(),
-      priority: (ui.priority.value || 'medium').toLowerCase(),
+      priority: normalizePriority(ui.priority.value),
       isPinned: Boolean(ui.pinned.checked),
     };
 
@@ -214,7 +250,7 @@
     ui.title.value = note.title || '';
     ui.category.value = note.category || '';
     ui.content.value = note.content || '';
-    ui.priority.value = note.priority || 'medium';
+    ui.priority.value = normalizePriority(note.priority);
     ui.pinned.checked = Boolean(note.isPinned);
     ui.archived.checked = Boolean(note.isArchived);
     ui.archived.disabled = false;
@@ -247,47 +283,166 @@
   }
 
   function renderNotes() {
-    const filtered = state.notes.filter(note => matchesFilter(note, state.filter));
-
-    if (!filtered.length) {
-      if (!state.notes.length) {
-        showListMessage('No notes yet. Add something above.');
-      } else {
-        showListMessage('Nothing matched your filter.');
-      }
-      updateSummary(filtered.length);
+    if (!state.notes.length) {
+      showListMessage('No notes yet. Add something above.');
+      updateSummary([]);
       return;
     }
 
+    const baseMatches = state.notes.filter(
+      note => matchesStatus(note, state.statusFilter) && matchesPriority(note, state.priorityFilter)
+    );
+
+    const searchMatches = baseMatches.filter(note => matchesSearch(note, state.searchTerm));
+    const pinnedMatches = searchMatches.filter(note => note.isPinned);
+    const finalMatches = state.pinnedOnly ? pinnedMatches : searchMatches;
+
+    if (!finalMatches.length) {
+      const message = buildEmptyMessage({ baseMatches, searchMatches, pinnedMatches });
+      showListMessage(message);
+      updateSummary([]);
+      return;
+    }
+
+    const sorted = [...finalMatches].sort(compareNotes);
+
     ui.list.innerHTML = '';
-    filtered.forEach(note => {
+    sorted.forEach(note => {
       ui.list.appendChild(createNoteCard(note));
     });
-    updateSummary(filtered.length);
+    updateSummary(sorted);
   }
 
   function showListMessage(message) {
     ui.list.innerHTML = `<p class="note-list__empty">${message}</p>`;
   }
 
-  function updateSummary(displayedCount) {
+  function updateSummary(visibleNotes) {
     if (!ui.summary) return;
     const total = state.notes.length;
     if (total === 0) {
       ui.summary.textContent = 'No notes stored yet.';
       return;
     }
-    const extra = displayedCount === total ? '' : ` (showing ${displayedCount} of ${total})`;
-    ui.summary.textContent = `${total} ${total === 1 ? 'note' : 'notes'}${extra}`;
+
+    const activeCount = state.notes.filter(note => !note.isArchived).length;
+    const archivedCount = total - activeCount;
+    const pinnedCount = state.notes.filter(note => note.isPinned).length;
+    const shown = visibleNotes.length;
+
+    const parts = [
+      `${total} ${total === 1 ? 'note' : 'notes'} total`,
+      `Active ${activeCount}`,
+      `Archived ${archivedCount}`,
+      `Pinned ${pinnedCount}`,
+      `${shown} ${shown === 1 ? 'note' : 'notes'} shown`,
+    ];
+
+    const filters = [];
+    if (state.statusFilter !== 'all') {
+      filters.push(state.statusFilter === 'active' ? 'active only' : 'archived only');
+    }
+    if (state.priorityFilter !== 'all') {
+      filters.push(`${formatPriority(state.priorityFilter)} priority`);
+    }
+    if (state.pinnedOnly) {
+      filters.push('pinned only');
+    }
+    const searchText = state.searchTerm.trim();
+    if (searchText) {
+      filters.push(`search "${searchText}"`);
+    }
+    if (filters.length) {
+      parts.push(`Filters: ${filters.join(', ')}`);
+    }
+
+    ui.summary.textContent = parts.join(' • ');
   }
 
-  function matchesFilter(note, value) {
+  function buildEmptyMessage({ baseMatches, searchMatches, pinnedMatches }) {
+    if (!state.notes.length) {
+      return 'No notes yet. Add something above.';
+    }
+
+    if (!baseMatches.length) {
+      if (state.statusFilter === 'archived') {
+        return 'No archived notes yet.';
+      }
+      if (state.statusFilter === 'active') {
+        return 'All saved notes are archived right now.';
+      }
+      if (state.priorityFilter !== 'all') {
+        return 'No notes with that priority yet.';
+      }
+    }
+
+    if (!searchMatches.length && state.searchTerm.trim()) {
+      return 'Nothing matched your search.';
+    }
+
+    if (state.pinnedOnly && !pinnedMatches.length) {
+      return 'No pinned notes match those filters.';
+    }
+
+    return 'Nothing matched your filters.';
+  }
+
+  function matchesSearch(note, query) {
+    const value = (query || '').trim().toLowerCase();
     if (!value) return true;
     const haystack = [note.title, note.content, note.category]
       .filter(Boolean)
       .join(' ')
       .toLowerCase();
     return haystack.includes(value);
+  }
+
+  function matchesStatus(note, filterValue) {
+    if (!filterValue || filterValue === 'all') return true;
+    if (filterValue === 'archived') return Boolean(note.isArchived);
+    return !note.isArchived;
+  }
+
+  function matchesPriority(note, filterValue) {
+    if (!filterValue || filterValue === 'all') return true;
+    return normalizePriority(note.priority) === normalizePriority(filterValue);
+  }
+
+  function compareNotes(a, b) {
+    if (a.isPinned !== b.isPinned) {
+      return a.isPinned ? -1 : 1;
+    }
+    if (a.isArchived !== b.isArchived) {
+      return a.isArchived ? 1 : -1;
+    }
+
+    const priorityDiff =
+      (PRIORITY_ORDER[normalizePriority(a.priority)] ?? PRIORITY_ORDER.medium) -
+      (PRIORITY_ORDER[normalizePriority(b.priority)] ?? PRIORITY_ORDER.medium);
+    if (priorityDiff !== 0) {
+      return priorityDiff;
+    }
+
+    const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    if (!Number.isNaN(timeA) && !Number.isNaN(timeB) && timeA !== timeB) {
+      return timeB - timeA;
+    }
+
+    return String(a.title || '').localeCompare(String(b.title || ''));
+  }
+
+  function normalizePriority(value) {
+    const normalized = String(value ?? '').trim().toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(PRIORITY_ORDER, normalized)) {
+      return normalized;
+    }
+    return 'medium';
+  }
+
+  function formatPriority(value) {
+    const normalized = normalizePriority(value);
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
   }
 
   function createNoteCard(note) {
@@ -305,21 +460,41 @@
     title.textContent = note.title || 'Untitled note';
     header.appendChild(title);
 
+    const tags = document.createElement('div');
+    tags.className = 'note-card__tags';
+
     if (note.isPinned) {
       const pin = document.createElement('span');
       pin.className = 'note-card__tag note-card__tag--pin';
       pin.textContent = 'Pinned';
-      header.appendChild(pin);
+      tags.appendChild(pin);
+    }
+
+    const priorityKey = normalizePriority(note.priority);
+    const priorityTag = document.createElement('span');
+    priorityTag.className = `note-card__tag note-card__tag--priority note-card__tag--priority-${priorityKey}`;
+    priorityTag.textContent = `${formatPriority(priorityKey)} priority`;
+    tags.appendChild(priorityTag);
+
+    if (note.isArchived) {
+      const archivedTag = document.createElement('span');
+      archivedTag.className = 'note-card__tag note-card__tag--archived';
+      archivedTag.textContent = 'Archived';
+      tags.appendChild(archivedTag);
+    }
+
+    if (tags.children.length) {
+      header.appendChild(tags);
     }
 
     card.appendChild(header);
 
     const meta = document.createElement('p');
     meta.className = 'note-card__meta';
-    const category = note.category ? `Category: ${note.category}` : 'Category: general';
-    const priority = note.priority ? `Priority: ${note.priority}` : 'Priority: medium';
-    const archived = note.isArchived ? 'Archived' : 'Active';
-    meta.textContent = `${category} • ${priority} • ${archived}`;
+    const categoryLabel = (note.category || 'general').toString().trim() || 'general';
+    const priorityLabel = formatPriority(note.priority);
+    const statusLabel = note.isArchived ? 'Archived' : 'Active';
+    meta.textContent = `Category: ${categoryLabel} • Priority: ${priorityLabel} • ${statusLabel}`;
     card.appendChild(meta);
 
     const body = document.createElement('p');

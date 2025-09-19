@@ -260,6 +260,74 @@ textarea {
   }
 }
 
+.panel__filters {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.panel__filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.filter-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--slate-500);
+}
+
+.filter-control span {
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.filter-select {
+  min-width: 150px;
+  border-radius: 12px;
+  border: 1px solid #cbd5f5;
+  background: #f8fafc;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--slate-600);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.filter-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px dashed #cbd5f5;
+  background: #f8fafc;
+  font-size: 0.85rem;
+  color: var(--slate-600);
+}
+
+.filter-flag input {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid #cbd5f5;
+  accent-color: var(--accent);
+}
+
+.filter-flag span {
+  font-weight: 600;
+}
+
 .form-row {
   display: grid;
   gap: 18px;
@@ -442,6 +510,7 @@ textarea {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--slate-700);
+  flex: 1;
 }
 
 .note-card__tag {
@@ -456,10 +525,47 @@ textarea {
   border: 1px solid rgba(99, 102, 241, 0.35);
 }
 
+.note-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .note-card__tag--pin {
   background: #fef3c7;
   color: #b45309;
   border-color: rgba(251, 191, 36, 0.6);
+}
+
+.note-card__tag--priority {
+  background: #e0f2fe;
+  color: #075985;
+  border-color: rgba(14, 116, 144, 0.35);
+}
+
+.note-card__tag--priority-high {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: rgba(248, 113, 113, 0.55);
+}
+
+.note-card__tag--priority-medium {
+  background: #ede9fe;
+  color: #5b21b6;
+  border-color: rgba(129, 140, 248, 0.5);
+}
+
+.note-card__tag--priority-low {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: rgba(134, 239, 172, 0.55);
+}
+
+.note-card__tag--archived {
+  background: #e5e7eb;
+  color: #475569;
+  border-color: rgba(148, 163, 184, 0.5);
 }
 
 .note-card__meta {
