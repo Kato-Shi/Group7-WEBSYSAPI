@@ -13,6 +13,7 @@
     searchTerm: '',
     statusFilter: 'active',
     priorityFilter: 'all',
+    categoryFilter: 'all',
     pinnedOnly: false,
     messageTimer: null,
   };
@@ -32,6 +33,7 @@
     status: document.getElementById('apiStatus'),
     filter: document.getElementById('filterInput'),
     statusFilter: document.getElementById('statusFilter'),
+    categoryFilter: document.getElementById('categoryFilter'),
     priorityFilter: document.getElementById('priorityFilter'),
     filterPinned: document.getElementById('pinnedFilter'),
     list: document.getElementById('notesList'),
@@ -78,6 +80,15 @@
       });
     }
 
+    if (ui.categoryFilter) {
+      ui.categoryFilter.value = state.categoryFilter;
+      ui.categoryFilter.addEventListener('change', event => {
+        const value = event.target.value;
+        state.categoryFilter = value && value !== '' ? value : 'all';
+        renderNotes();
+      });
+    }
+
     if (ui.priorityFilter) {
       ui.priorityFilter.value = state.priorityFilter;
       ui.priorityFilter.addEventListener('change', event => {
@@ -111,15 +122,65 @@
       const response = await fetchJson(`${ENDPOINTS.notes}?limit=100&archived=all`);
       const list = Array.isArray(response?.data) ? response.data : [];
       state.notes = list;
+      updateCategoryFilterOptions();
       renderNotes();
       setStatus('ok', 'API online');
     } catch (error) {
       console.error('Failed to load notes:', error);
       state.notes = [];
+      updateCategoryFilterOptions();
       showListMessage('Could not load notes. Maybe refresh later.');
       updateSummary([]);
       setStatus('error', 'API offline');
       showMessage(error.message || 'Unable to reach the API.', 'error');
+    }
+  }
+
+  function updateCategoryFilterOptions() {
+    if (!ui.categoryFilter) return;
+
+    const select = ui.categoryFilter;
+    const currentValue = (state.categoryFilter || 'all').toString();
+    const normalizedCurrent = currentValue.toLowerCase();
+
+    select.innerHTML = '';
+
+    const defaultOption = document.createElement('option');
+    defaultOption.value = 'all';
+    defaultOption.textContent = 'All categories';
+    select.appendChild(defaultOption);
+
+    const categoryMap = new Map();
+    state.notes.forEach(note => {
+      const raw = String(note.category ?? '').trim();
+      const label = raw || 'general';
+      const key = label.toLowerCase();
+      if (!categoryMap.has(key)) {
+        categoryMap.set(key, label);
+      }
+    });
+
+    const categories = [...categoryMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    let hasMatch = normalizedCurrent === 'all';
+
+    categories.forEach(([key, label]) => {
+      const option = document.createElement('option');
+      option.value = label;
+      option.textContent = label;
+      if (!hasMatch && key === normalizedCurrent) {
+        option.selected = true;
+        hasMatch = true;
+      }
+      select.appendChild(option);
+    });
+
+    if (!hasMatch) {
+      select.value = 'all';
+      state.categoryFilter = 'all';
+    } else if (normalizedCurrent === 'all') {
+      select.value = 'all';
+    } else {
+      state.categoryFilter = select.value;
     }
   }
 
@@ -290,7 +351,10 @@
     }
 
     const baseMatches = state.notes.filter(
-      note => matchesStatus(note, state.statusFilter) && matchesPriority(note, state.priorityFilter)
+      note =>
+        matchesStatus(note, state.statusFilter) &&
+        matchesPriority(note, state.priorityFilter) &&
+        matchesCategory(note, state.categoryFilter)
     );
 
     const searchMatches = baseMatches.filter(note => matchesSearch(note, state.searchTerm));
@@ -345,6 +409,9 @@
     if (state.priorityFilter !== 'all') {
       filters.push(`${formatPriority(state.priorityFilter)} priority`);
     }
+    if (state.categoryFilter !== 'all') {
+      filters.push(`category "${state.categoryFilter}"`);
+    }
     if (state.pinnedOnly) {
       filters.push('pinned only');
     }
@@ -370,6 +437,9 @@
       }
       if (state.statusFilter === 'active') {
         return 'All saved notes are archived right now.';
+      }
+      if (state.categoryFilter !== 'all') {
+        return 'No notes in that category yet.';
       }
       if (state.priorityFilter !== 'all') {
         return 'No notes with that priority yet.';
@@ -406,6 +476,12 @@
   function matchesPriority(note, filterValue) {
     if (!filterValue || filterValue === 'all') return true;
     return normalizePriority(note.priority) === normalizePriority(filterValue);
+  }
+
+  function matchesCategory(note, filterValue) {
+    if (!filterValue || filterValue === 'all') return true;
+    const noteCategory = String(note.category ?? '').trim() || 'general';
+    return noteCategory.toLowerCase() === String(filterValue).trim().toLowerCase();
   }
 
   function compareNotes(a, b) {
